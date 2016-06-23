@@ -14,7 +14,7 @@ So, with `simple-synoindex-client` , now you can run `synoindex` inside the dock
 
 Downloads
 ======
-[simple-synoindex-server-0.2.zip](https://github.com/racklin/simple-synoindex-server/releases/download/v0.1/simple-synoindex-server-0.2.zip)
+[simple-synoindex-server-0.2.zip](https://github.com/racklin/simple-synoindex-server/releases/download/v0.2/simple-synoindex-server-0.2.zip)
 
 
 Install
