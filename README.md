@@ -4,7 +4,7 @@ Simple Media Index Server is a web service wrapper for Synology NAS native `syno
 
 
 Introduction
-====
+======
 Since Synology DSM 6.0 comes Docker support (https://www.synology.com/en-global/dsm/6.0).
 Users run many media services(ex. sickrage / couchpotato / transmission) in the docker.
 But we can't notify Synology NAS to reindexing new files in the docker's container.
@@ -12,8 +12,13 @@ But we can't notify Synology NAS to reindexing new files in the docker's contain
 So, with `simple-synoindex-client` , now you can run `synoindex` inside the docker's container and request simple-synoindex-server to calling native `synoindex` to reindexing your new files.
 
 
+Downloads
+======
+[simple-synoindex-server-0.1.zip](https://github.com/racklin/simple-synoindex-server/releases/download/untagged-1e2bd1bca30dd94d7559/simple-synoindex-server-0.1.zip)
+
+
 Install
-====
+======
 1. Download Pre-Build Binary and Unzip it to any directory (ex. /volume1/homes/admin) .
 2. Runing `simple-synoindex-server` by Task Scheduler when Boot-Up or `/etc/rc.local`.
 
@@ -44,3 +49,12 @@ SERVER_PORT=32699
 /movies=/volume1/video/movies
 ```
 
+Sample Docker Settings
+======
+![Docker-Setting1](https://racklin.github.io/simple-synoindex-server/nas-docker-setting1.png)
+
+
+Sample Task Settings
+======
+![Task Setting1](https://racklin.github.io/simple-synoindex-server/nas-task-setting1.png)
+![Task Setting2](https://racklin.github.io/simple-synoindex-server/nas-task-setting2.png)
