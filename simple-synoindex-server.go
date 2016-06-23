@@ -7,12 +7,16 @@ import (
     "strings"
     "github.com/go-ini/ini"
     "log"
+    "time"
+    "os"
     "os/exec"
 )
 
 var (
+    inifile string
     cfg *ini.File
     volumeMappings map[string]string
+    lastMTime time.Time
 )
 
 
@@ -21,12 +25,33 @@ func init() {
     // get current execute file path
     execdir := GetCurrentExecDir()
 
-    inifile := fmt.Sprintf("%s/simple-synoindex-server.ini", execdir)
+    inifile = fmt.Sprintf("%s/simple-synoindex-server.ini", execdir)
     cfg , _ = ini.LooseLoad(inifile)
-
-    volumeMappings = cfg.Section("mappings").KeysHash()
+    
+    reloadMappings()
 
 }
+
+
+func reloadMappings() {
+
+    stat, err := os.Stat(inifile)
+    
+    if err != nil {
+        log.Printf("reloadMappings Error: %s \n", err)
+        return
+    }
+    
+    iniMTime := stat.ModTime()
+    
+    if iniMTime.After(lastMTime) {
+        cfg.Reload()        
+        volumeMappings = cfg.Section("mappings").KeysHash()
+        lastMTime = iniMTime
+    }
+    
+}
+
 
 func remappingPath(srcPath string) string {
 
@@ -41,11 +66,18 @@ func remappingPath(srcPath string) string {
 }
 
 func SynoIndex(w http.ResponseWriter, req *http.Request) {
+    
     io.WriteString(w, "ok\n")
     req.ParseForm()
     args := req.Form["args"]
 
+    // reload mapping settings if necessarily
+    reloadMappings()
+    
     args[1] = remappingPath(args[1])
+    
+    // log to stdout
+    log.Printf("SynoIndex: %s %s \n", args[0], args[1])
 
     // execute /usr/syno/bin/synoindex 
     cmd := exec.Command("/usr/syno/bin/synoindex", args...)
@@ -53,7 +85,7 @@ func SynoIndex(w http.ResponseWriter, req *http.Request) {
     err :=  cmd.Run()
 
     if err != nil {
-        log.Printf("SynoIndex Error: %s")
+        log.Printf("SynoIndex Error: %s \n")
     }
 
 }
