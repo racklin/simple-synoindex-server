@@ -1,103 +1,108 @@
 package main
 
 import (
-    "io"
-    "net/http"
-    "fmt"
-    "strings"
-    "github.com/go-ini/ini"
-    "log"
-    "time"
-    "os"
-    "os/exec"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+
+	"github.com/go-ini/ini"
 )
 
 var (
-    inifile string
-    cfg *ini.File
-    volumeMappings map[string]string
-    lastMTime time.Time
+	inifile        string
+	cfg            *ini.File
+	volumeMappings map[string]string
+	lastMTime      time.Time
 )
-
 
 func init() {
 
-    // get current execute file path
-    execdir := GetCurrentExecDir()
+	// get current execute file path
+	execdir := GetCurrentExecDir()
 
-    inifile = fmt.Sprintf("%s/simple-synoindex-server.ini", execdir)
-    cfg , _ = ini.LooseLoad(inifile)
-    
-    reloadMappings()
+	inifile = fmt.Sprintf("%s/simple-synoindex-server.ini", execdir)
+	cfg, _ = ini.LooseLoad(inifile)
+
+	reloadMappings()
 
 }
-
 
 func reloadMappings() {
 
-    stat, err := os.Stat(inifile)
-    
-    if err != nil {
-        log.Printf("reloadMappings Error: %s \n", err)
-        return
-    }
-    
-    iniMTime := stat.ModTime()
-    
-    if iniMTime.After(lastMTime) {
-        cfg.Reload()        
-        volumeMappings = cfg.Section("mappings").KeysHash()
-        lastMTime = iniMTime
-    }
-    
-}
+	stat, err := os.Stat(inifile)
 
+	if err != nil {
+		log.Printf("reloadMappings Error: %s \n", err)
+		return
+	}
+
+	iniMTime := stat.ModTime()
+
+	if iniMTime.After(lastMTime) {
+		cfg.Reload()
+		volumeMappings = cfg.Section("mappings").KeysHash()
+		lastMTime = iniMTime
+	}
+
+}
 
 func remappingPath(srcPath string) string {
 
-    newPath := srcPath
+	newPath := srcPath
 
-    for vPath, mPath := range volumeMappings {
-        newPath = strings.Replace(newPath, vPath, mPath, 1)
-        if newPath != srcPath { return newPath; }
-    }
+	for vPath, mPath := range volumeMappings {
+		newPath = strings.Replace(newPath, vPath, mPath, 1)
+		if newPath != srcPath {
+			return newPath
+		}
+	}
 
-    return newPath
+	return newPath
 }
 
 func SynoIndex(w http.ResponseWriter, req *http.Request) {
-    
-    io.WriteString(w, "ok\n")
-    req.ParseForm()
-    args := req.Form["args"]
 
-    // reload mapping settings if necessarily
-    reloadMappings()
-    
-    args[1] = remappingPath(args[1])
-    
-    // log to stdout
-    log.Printf("SynoIndex: %s %s \n", args[0], args[1])
+	io.WriteString(w, "ok\n")
+	req.ParseForm()
+	args := req.Form["args"]
 
-    // execute /usr/syno/bin/synoindex 
-    cmd := exec.Command("/usr/syno/bin/synoindex", args...)
+	// skip execute synoindex if only one argument
+	if len(args) == 1 {
+		log.Printf("Simple-SynoIndex NOT Support [%s] argument, but response OK to clients!\n", args[0])
+		return
+	}
 
-    err :=  cmd.Run()
+	// reload mapping settings if necessarily
+	reloadMappings()
 
-    if err != nil {
-        log.Printf("SynoIndex Error: %s \n")
-    }
+	args[1] = remappingPath(args[1])
+
+	// log to stdout
+	log.Printf("SynoIndex: %s %s \n", args[0], args[1])
+
+	// execute /usr/syno/bin/synoindex
+	cmd := exec.Command("/usr/syno/bin/synoindex", args...)
+
+	err := cmd.Run()
+
+	if err != nil {
+		log.Printf("SynoIndex Error: %s \n")
+	}
 
 }
 
 func main() {
 
-    srvIp := cfg.Section("main").Key("SERVER_IP").MustString("172.17.0.1")
-    srvPort := cfg.Section("main").Key("SERVER_PORT").MustString("32699")
-    srvListen := fmt.Sprintf("%s:%s", srvIp, srvPort)
+	srvIp := cfg.Section("main").Key("SERVER_IP").MustString("172.17.0.1")
+	srvPort := cfg.Section("main").Key("SERVER_PORT").MustString("32699")
+	srvListen := fmt.Sprintf("%s:%s", srvIp, srvPort)
 
-    http.HandleFunc("/synoindex", SynoIndex)
-    log.Fatal(http.ListenAndServe(srvListen, nil))
+	http.HandleFunc("/synoindex", SynoIndex)
+	log.Fatal(http.ListenAndServe(srvListen, nil))
 
 }
-
